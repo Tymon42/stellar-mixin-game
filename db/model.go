@@ -14,6 +14,7 @@ type Event struct {
 	gorm.Model
 	EventLink     EventLink `gorm:"embedded"`
 	EventCategory string
+	EventTitle    string
 	EventID       string
 	Event         string
 	IsSingal      bool
@@ -22,6 +23,6 @@ type Event struct {
 
 type User struct {
 	gorm.Model
-	UserID  string `gorm:"unique"`
-	LastEventID string
+	UserID      string `gorm:"unique"`
+	LastEventID string //记录最后一个发生的首个事件的 EventID
 }
