@@ -4,20 +4,15 @@ import (
 	"gorm.io/gorm"
 )
 
-type EventLink struct {
-	Previous string
-	LEvent   string
-	REvent   string
-}
-
 type Event struct {
 	gorm.Model
-	EventLink     EventLink `gorm:"embedded"`
+	Previous      string
+	LEvent        string
+	REvent        string
 	EventCategory string
 	EventTitle    string
-	EventID       string
+	EventID       string `gorm:"unique"`
 	Event         string
-	IsSingal      bool
 	IsStop        bool
 }
 

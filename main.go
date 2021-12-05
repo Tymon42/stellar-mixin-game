@@ -4,20 +4,14 @@ import (
 	// "bytes"
 	"context"
 	"encoding/base64"
-
-	// "encoding/base64"
-	// "encoding/json"
-	// "fmt"
-	// "io/ioutil"
+	"fmt"
 	"log"
-	// "os"
-
 	"os/signal"
 	"syscall"
 	"time"
 
 	"stellar-mixin-game/db"
-	"stellar-mixin-game/sendMsg"
+	"stellar-mixin-game/sendmsg"
 	"stellar-mixin-game/util"
 
 	"github.com/fox-one/mixin-sdk-go"
@@ -33,9 +27,9 @@ func main() {
 
 	ctx := context.Background()
 
-	fv := "d384d0a0-78d7-4f14-9761-21e85586a18a"
+	// fv := "d384d0a0-78d7-4f14-9761-21e85586a18a"
 
-	sdb := db.OpenDB()
+	sdb := db.OpenDB("./game.db")
 
 	sdb.AutoMigrate(&db.Event{}, &db.User{})
 
@@ -48,14 +42,27 @@ func main() {
 		//解析内容
 		context_byte, _ := base64.StdEncoding.DecodeString(msg.Data)
 		context := string(context_byte)
+		fmt.Printf("context: %+v\n", context)
 
 		switch context {
 		case "你好":
+			fmt.Println("hi")
 			if !db.If_old_user(sdb, msg.UserID) {
 				db.Insert_user(sdb, msg.UserID)
-				//TODO: 发送0000
+				//TODO: 发送0000 按钮
+				button_group := mixin.AppButtonGroupMessage{}
+				lmsg_data := &mixin.AppButtonMessage{
+					Label:  "开始游戏",
+					Action: "input:" + "0000",
+					Color:  "#2A92F1",
+				}
+				button_group = append(button_group, *lmsg_data)
+				rq := sendmsg.GenButtonMsg(button_group,msg.ConversationID,msg.UserID)
+				return client.SendMessage(ctx, rq)
+
 			} else {
 				//TODO: 发送菜单
+				return sendmsg.SendTextMsg(ctx, client, "菜单", msg.ConversationID, msg.UserID)
 			}
 		case "/回滚":
 			{
@@ -63,18 +70,44 @@ func main() {
 				events := []*db.Event{}
 				events = append(events, db.FindLastEvent(sdb, msg.UserID))
 				for events[len(events)-1].IsStop != true {
+					//TODO: find next event
 					events = append(events, db.FindLastEvent(sdb, msg.UserID))
 				}
-				db.RefreshLastEventID(sdb, msg.UserID, events[len(events)-1].EventID)
+				db.RefreshLastEventID(sdb, msg.UserID, events[0].EventID)
+				rq := sendmsg.GenMsgRequests(msg.ConversationID, msg.UserID, events)
+				return client.SendMessages(ctx, rq)
+
 			}
 		default:
-			//TODO: 根据发来 event_id 新建事件链
+			{
+				_, err := db.FindEvent(sdb, context)
+				if err == nil {
+					//根据发来 event_id 新建事件链
+					events := []*db.Event{}
+					event, _ := db.FindEvent(sdb, context)
+					events = append(events, event)
+					for events[len(events)-1].IsStop != true {
+						events = append(events, db.QureyNextEvent(sdb, events[len(events)-1]))
+					}
+					if events[len(events)-1].IsStop {
+						// 生成按钮
+						levent := db.QureyLEvent(sdb, events[len(events)-1])
+						revent := db.QureyREvent(sdb, events[len(events)-1])
+						rq := sendmsg.GenButtonMsg(sendmsg.Gen2ButtonData(*levent, *revent), msg.ConversationID, msg.UserID)
+						return client.SendMessage(ctx, rq)
+					}
+					db.RefreshLastEventID(sdb, msg.UserID, events[0].EventID)
+					rq := sendmsg.GenMsgRequests(msg.ConversationID, msg.UserID, events)
+					return client.SendMessages(ctx, rq)
+				} else {
+					return sendmsg.SendTextMsg(ctx, client, "nothing", msg.ConversationID, msg.UserID)
+				}
+			}
 		}
 
-		return sendmsg.SendVideoMsg(ctx, client, fv, msg.ConversationID, msg.UserID)
-
+		// return sendmsg.SendVideoMsg(ctx, client, fv, msg.ConversationID, msg.UserID)
+		return sendmsg.SendTextMsg(ctx, client, "nothin", msg.ConversationID, msg.UserID)
 		//TODO: 生成消息队列
-
 		// Send the response
 		// return client.SendMessage(ctx, reply)
 	}

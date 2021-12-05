@@ -2,15 +2,14 @@ package db
 
 import (
 	"fmt"
-	"log"
 	"stellar-mixin-game/util"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-func OpenDB() *gorm.DB {
-	db, err := gorm.Open(sqlite.Open("game.db"), &gorm.Config{})
+func OpenDB(path string) *gorm.DB {
+	db, err := gorm.Open(sqlite.Open(path), &gorm.Config{})
 	util.CheckErr(err)
 	return db
 }
@@ -44,13 +43,13 @@ func FindLastEvent(db *gorm.DB, user_id string) *Event {
 	var qUsers *User
 	u := db.Where("user_id = ?", user_id).First(&qUsers)
 	if u.Error != nil {
-		log.Panicln(u.Error)
+		return &Event{}
 	} else {
 		if qUsers.UserID == user_id {
 			var nEvent *Event
 			e := db.Where("event_id = ?", qUsers.LastEventID).First(&nEvent)
 			if e.Error != nil {
-				log.Panicln(e.Error)
+				return nEvent
 			} else {
 				return nEvent
 			}
@@ -59,19 +58,52 @@ func FindLastEvent(db *gorm.DB, user_id string) *Event {
 	return &Event{}
 }
 
-func FindEvent(db *gorm.DB, event_id string) *Event {
+func FindEvent(db *gorm.DB, event_id string) (*Event, error) {
 	var event *Event
 	u := db.Where("event_id = ?", event_id).First(&event)
 	if u.Error != nil {
-		log.Panicln(u.Error)
+		return &Event{}, u.Error
 	} else {
 		if event.EventID == event_id {
-				return event
-			}
+			return event, nil
 		}
-	return &Event{}
+	}
+	return &Event{}, u.Error
 }
 
 func RefreshLastEventID(db *gorm.DB, user_id, last_event_id string) {
 	db.Model(&User{}).Where("user_id = ?", user_id).Update("last_event_id", last_event_id)
+}
+
+func QureyNextEvent(db *gorm.DB, event *Event) *Event {
+	var nEvent *Event
+	u := db.Where("event_id = ?", event.LEvent).First(&nEvent)
+	if u.Error != nil {
+		return &Event{}
+	} else {
+		return nEvent
+	}
+	return &Event{}
+}
+
+func QureyLEvent(db *gorm.DB, event *Event) *Event {
+	var nEvent *Event
+	u := db.Where("event_id = ?", event.LEvent).First(&nEvent)
+	if u.Error != nil {
+		return &Event{}
+	} else {
+		return nEvent
+	}
+	return &Event{}
+}
+
+func QureyREvent(db *gorm.DB, event *Event) *Event {
+	var nEvent *Event
+	u := db.Where("event_id = ?", event.REvent).First(&nEvent)
+	if u.Error != nil {
+		return &Event{}
+	} else {
+		return nEvent
+	}
+	return &Event{}
 }

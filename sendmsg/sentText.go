@@ -8,13 +8,13 @@ import (
 )
 
 
-func SendTextMsg(ctx context.Context,c *mixin.Client, attachment_id, conversation_id, recipient_id string) error {
-	vmr := genTextMsg(attachment_id, conversation_id, recipient_id)
+func SendTextMsg(ctx context.Context,c *mixin.Client, text, conversation_id, recipient_id string) error {
+	vmr := genTextMsg(text, conversation_id, recipient_id)
 	return c.SendMessage(ctx, vmr)
 }
 
-func genTextMsg(attachment_id, conversation_id, recipient_id string) *mixin.MessageRequest {
-	data := genTextData(attachment_id)
+func genTextMsg(text, conversation_id, recipient_id string) *mixin.MessageRequest {
+	data := genTextData(text)
 	rq := genMsgRequest(conversation_id, recipient_id, mixin.MessageCategoryPlainText, data)
 	return rq
 }
