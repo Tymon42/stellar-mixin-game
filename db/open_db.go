@@ -59,6 +59,19 @@ func FindLastEvent(db *gorm.DB, user_id string) *Event {
 	return &Event{}
 }
 
+func FindEvent(db *gorm.DB, event_id string) *Event {
+	var event *Event
+	u := db.Where("event_id = ?", event_id).First(&event)
+	if u.Error != nil {
+		log.Panicln(u.Error)
+	} else {
+		if event.EventID == event_id {
+				return event
+			}
+		}
+	return &Event{}
+}
+
 func RefreshLastEventID(db *gorm.DB, user_id, last_event_id string) {
 	db.Model(&User{}).Where("user_id = ?", user_id).Update("last_event_id", last_event_id)
 }
